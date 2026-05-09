@@ -2,6 +2,11 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 import pymysql
 from flask import request
+import os
+import uuid
+import datetime
+from werkzeug.utils import secure_filename
+from flask import send_from_directory
 
 app=Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # 解决中文乱码问题
@@ -95,24 +100,68 @@ def update_goods(good_id):
 
 @app.route('/api/products',methods=['POST'])
 def add_product():
-    data=request.json
+    name=request.form.get('name')
+    stock=request.form.get('stock')
+    cost_price=request.form.get('cost_price')
+    sell_price=request.form.get('sell_price')
+    file=request.files.get('file')
     
+    image_url=''
+    if file:
+        upload_path=create_upload_path()
+        filename=generate_filename(name,file.filename)
+        filepath=os.path.join(upload_path,filename)
+        file.save(os.path.join(upload_path,filename))
+        relative_path=filepath.replace(BASE_DIR,'').replace('\\','/')
+        image_url=f"http://localhost:5000{relative_path}"
+        
+        
     conn=get_db()
     cursor=conn.cursor()
     
     cursor.execute("""
-                   INSERT INTO goods(name,stock,cost_price,sell_price)
-                   VALUES(%s,%s,%s,%s)
+                   INSERT INTO goods(name,stock,cost_price,sell_price,image)
+                   VALUES(%s,%s,%s,%s,%s)
                    """,(
-                       data['name'],
-                       data['stock'],
-                       data['cost_price'],
-                       data['sell_price']
+                       name,
+                       stock,
+                       cost_price,
+                       sell_price,
+                       image_url
                    ))
     conn.commit()
     cursor.close()
     conn.close()
     return jsonify({'message':'新增成功'})
+
+@app.route('/uploads/<path:filename>')
+def get_file(filename):
+    return send_from_directory('uploads',filename)
+
+BASE_DIR =os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER=os.path.join(BASE_DIR,'uploads')
+
+app.config['UPLOAD_FOLDER']=UPLOAD_FOLDER
+
+def create_upload_path():
+    now= datetime.datetime.now()
+    
+    path=os.path.join(
+        app.config['UPLOAD_FOLDER'],
+        'products',
+        str(now.year),
+        str(now.month),
+        str(now.day)
+    )
+    os.makedirs(path,exist_ok=True)
+    return path
+
+def generate_filename(productr_name,original_filename):
+    ext=original_filename.split('.')[-1]
+    
+    safe_name=secure_filename(productr_name)
+    unique_id=uuid.uuid4().hex[:6]
+    return f"{safe_name}_{unique_id}.{ext}"
 
 if __name__ == '__main__':
     app.run(debug=True)

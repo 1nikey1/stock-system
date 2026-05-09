@@ -4,6 +4,8 @@
     <div class="search-box">
       <input v-model="keyword" placeholder="输入商品名称搜索"/>
       <button @click="fetchProducts">搜索</button>
+      <button @click="showAdd=true">新增商品</button>
+      <button @click="resetSearch">重置</button>
       <button @click="logout">退出登录</button>
     </div>
 
@@ -23,6 +25,7 @@
     <div v-if="showAdd">
       <h3>新增商品</h3>
 
+      <p>图片：</p><input type="file" @change="handleFile">
       <p>名称：</p><input v-model="newForm.name"/>
       <p>库存：</p><input v-model="newForm.stock"/>
       <p>成本价：</p><input v-model="newForm.cost_price"/>
@@ -37,6 +40,7 @@
         <tr>
           <th>ID</th>
           <th>名称</th>
+          <th>图片</th>
           <th>库存</th>
           <th>成本价</th>
           <th>售价</th>
@@ -47,6 +51,7 @@
         <tr v-for="item in goodsList" :key="item.id">
           <td>{{ item.id }}</td>
           <td>{{ item.name }}</td>
+          <td><img :src="item.image" width="60"></td>
           <td>{{ item.stock }}</td>
           <td>{{ item.cost_price }}</td>
           <td>{{ item.sell_price }}</td>
@@ -72,7 +77,7 @@ export default {
     return {
       goodsList: [],
       keyword: '',
-
+      file:null,
       editing: false,
       form: {
         id: null,
@@ -89,6 +94,7 @@ export default {
         cost_price:'',
         sell_price:''
       }
+      
     }
   },
 
@@ -161,11 +167,19 @@ export default {
     },
 
     addProduct(){
+      const formData=new FormData()
+      formData.append('name',this.newForm.name)
+      formData.append('stock',this.newForm.stock)
+      formData.append('cost_price',this.newForm.cost_price)
+      formData.append('sell_price',this.newForm.sell_price)
+      if(this.file){
+        formData.append('file',this.file)
+      }
       if(!this.newForm.name){
         alert('请输入商品名称')
         return
       }
-      axios.post('http://localhost:5000/api/products', this.newForm)
+      axios.post('http://localhost:5000/api/products', formData)
         .then(()=>{
           alert('新增成功')
           this.showAdd=false
@@ -176,6 +190,7 @@ export default {
             cost_price:'',
             sell_price:''
           }
+          this.file=null
           this.fetchProducts()
         })
         .catch(err=>{
@@ -185,7 +200,15 @@ export default {
     },
     cancelAdd(){
       this.showAdd=false
+    },
+    resetSearch(){
+      this.keyword=''
+      this.fetchProducts()
+    },
+    handleFile(e){
+      this.file=e.target.files[0]
     }
+
   }
 }
 </script>
