@@ -15,19 +15,6 @@
     </div>
     </div>
 
-    <div v-if="editing">
-      <h3>编辑商品</h3>
-
-      <p>名称：</p><input v-model="form.name" placeholder="名称"/>
-      <p>库存：</p><input v-model="form.stock" placeholder="库存"/>
-      <p>成本价：</p><input v-model="form.cost_price" placeholder="成本价"/>
-      <p>售价：</p><input v-model="form.sell_price" placeholder="售价"/>
-
-      <button @click="updateProduct">保存</button>
-      <button @click="cancelEdit">取消</button>
-      <hr>
-    </div>
-
     <el-table :data="goodsList" border style="width:100%">
       <el-table-column prop="id" label="ID" width="80"/>
       <el-table-column prop="name" label="商品名称"/>
@@ -83,6 +70,36 @@
   </template>
 </el-dialog>
 
+<el-dialog v-model="editing" title="编辑商品" width="500px">
+  <el-form label-width="80px">
+    <el-form-item label="名称">
+      <el-input v-model="form.name"/>
+    </el-form-item>
+    <el-form-item label="库存">
+      <el-input v-model="form.stock"/>
+    </el-form-item>
+    <el-form-item label="成本价">
+      <el-input v-model="form.cost_price"/>
+    </el-form-item>
+    <el-form-item label="售价">
+      <el-input v-model="form.sell_price"/>
+    </el-form-item>
+
+    <el-form-item label="图片">
+      <input type="file" @change="handleEditFile">
+      <div v-if="editPreviewImage" style="margin-top:10px;">
+        <img :src="editPreviewImage" width="120" style="border-radius: 8px;"/>
+      </div>
+    </el-form-item>
+
+  </el-form>
+  <template #footer>
+    <el-button @click="editing=false">取消</el-button>
+    <el-button type="primary" @click="updateProduct">保存</el-button>
+  </template>
+
+</el-dialog>
+
   </div>
 
  
@@ -99,6 +116,9 @@ export default {
       goodsList: [],
       keyword: '',
       file:null,
+      previewImage:'',
+      editFile:null,
+      editPreviewImage:'',
       editing: false,
       form: {
         id: null,
@@ -162,6 +182,8 @@ export default {
         cost_price: item.cost_price,
         sell_price: item.sell_price
       }
+      this.editPreviewImage=item.image
+      this.editFile=null
     },
 
     cancelEdit() {
@@ -231,6 +253,12 @@ export default {
     },
     openAddDialog(){
       this.showAdd=true
+    },
+    handleEditFile(e){
+      this.editFile=e.target.files[0]
+      if(this.editFile){
+        this.editPreviewImage=URL.createObjectURL(this.editFile)
+      }
     }
 
   }
