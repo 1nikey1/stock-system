@@ -20,12 +20,12 @@
       <el-table-column prop="name" label="商品名称"/>
       <el-table-column prop="图片" width="120">
         <template #default="scope">
-          <img 
+          <el-image
             :src="scope.row.image"
-            width="60"
-            height="60"
-            style="object-fit: cover; border-radius: 6px;"
-            />
+            style="width:60px;height:60px;border-radius: 6px;"
+            fit="cover"
+            :preview-src-list="[scope.row.image]"
+            preview-telepored/>
         </template>
       </el-table-column>
       <el-table-column prop="stock" label="库存"/>
@@ -192,15 +192,25 @@ export default {
 
     // 更新
     updateProduct() {
-      axios.put(`http://localhost:5000/api/products/${this.form.id}`, this.form)
+      const formData=new FormData()
+
+      formData.append('name',this.form.name)
+      formData.append('stock',this.form.stock)
+      formData.append('cost_price',this.form.cost_price)
+      formData.append('sell_price',this.form.sell_price)
+
+      if(this.editFile){
+        formData.append('file',this.editFile)
+      }
+      axios.put(`http://localhost:5000/api/products/${this.form.id}`, formData)
         .then(() => {
-          alert('修改成功')
+          alert('更新成功')
           this.editing = false
           this.fetchProducts()
         })
         .catch(err => {
           console.error(err)
-          alert('修改失败')
+          alert('更新失败')
         })
     },
 

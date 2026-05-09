@@ -76,23 +76,45 @@ def delete_good(good_id):
 
 @app.route('/api/products/<int:good_id>',methods=['PUT'])
 def update_goods(good_id):
-    data=request.json
-    
+    #获得表单数据
+    name=request.form.get('name')
+    stock=request.form.get('stock')
+    cost_price=request.form.get('cost_price')
+    sell_price=request.form.get('sell_price')
+    #获取上传文件
+    file=request.files.get('file')
     conn=get_db()
-    cursor=conn.cursor()
-    
+    cursor=conn.cursor(pymysql.cursors.DictCursor)
+    #查询原有商品
     cursor.execute(
-    """UPDATE goods
-    SET name=%s,stock=%s,cost_price=%s,sell_price=%s
-    WHERE id=%s
-    """,(
-        data['name'],
-        data['stock'],
-        data['cost_price'],
-        data['sell_price'],
-        good_id
+        'SELECT * FROM goods WHERE id=%s',(good_id,)
     )
-    )
+    old_good=cursor.fetchone()
+    #默认使用旧图片
+    image_url=old_good['image']
+    #如果上传了新图片，处理上传
+    if file:
+        #创建目录
+        upload_path=create_upload_path()
+        #生成文件名
+        filename=generate_filename(name,file.filename)
+        #完整路径
+        filepath=os.path.join(upload_path,filename)
+        #保存文件
+        file.save(filepath)
+        #生成访问URL
+        relative_path=filepath.replace(BASE_DIR,'').replace('\\','/')
+        image_url=f"http://localhost:5000{relative_path}"
+    #更新数据库
+    cursor.execute("""
+                   UPDATE goods
+                   SET name=%s,stock=%s,cost_price=%s,sell_price=%s,image=%s
+                     WHERE id=%s
+                     """,
+                     (
+                         name,stock,cost_price,sell_price,image_url,good_id
+                     )
+                    )
     conn.commit()
     cursor.close()
     conn.close()
