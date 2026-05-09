@@ -2,7 +2,11 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+
 const app = createApp(App)
 
 app.use(router)   // 👉 必须在 mount 前
+app.use(ElementPlus)   // 👉 必须在 mount 前
 app.mount('#app')

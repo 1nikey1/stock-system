@@ -1,12 +1,18 @@
 <template>  
   <div class="container">
     <h2>商品列表</h2>
-    <div class="search-box">
-      <input v-model="keyword" placeholder="输入商品名称搜索"/>
-      <button @click="fetchProducts">搜索</button>
-      <button @click="showAdd=true">新增商品</button>
-      <button @click="resetSearch">重置</button>
-      <button @click="logout">退出登录</button>
+    <div class="toolbar">
+      <el-input
+      v-model="keyword"
+      placeholder="请输入关键词"
+      style="width:220px"/>
+      <br>
+      <div class="btn-group">
+      <el-button type="primary" @click="fetchProducts">搜索</el-button>
+      <el-button @click="resetSearch">重置</el-button>
+      <el-button type="success" @click="openAddDialog">新增</el-button>
+      <el-button type="danger" @click="logout">退出登录</el-button>
+    </div>
     </div>
 
     <div v-if="editing">
@@ -22,52 +28,67 @@
       <hr>
     </div>
 
-    <div v-if="showAdd">
-      <h3>新增商品</h3>
+    <el-table :data="goodsList" border style="width:100%">
+      <el-table-column prop="id" label="ID" width="80"/>
+      <el-table-column prop="name" label="商品名称"/>
+      <el-table-column prop="图片" width="120">
+        <template #default="scope">
+          <img 
+            :src="scope.row.image"
+            width="60"
+            height="60"
+            style="object-fit: cover; border-radius: 6px;"
+            />
+        </template>
+      </el-table-column>
+      <el-table-column prop="stock" label="库存"/>
+      <el-table-column prop="cost_price" label="成本价"/>
+      <el-table-column prop="sell_price" label="售价"/>
+      <el-table-column label="操作" width="220" align="center">
+        <template #default="scope">
+          <div class="action-buttons">
+          <el-button type="primary" size="small" @click="editProduct(scope.row)">编辑</el-button>
+          <el-button type="danger" size="small" @click="deleteProduct(scope.row.id)">删除</el-button>
+        
+        </div></template>
+      </el-table-column>
+    </el-table>
 
-      <p>图片：</p><input type="file" @change="handleFile">
-      <p>名称：</p><input v-model="newForm.name"/>
-      <p>库存：</p><input v-model="newForm.stock"/>
-      <p>成本价：</p><input v-model="newForm.cost_price"/>
-      <p>售价：</p><input v-model="newForm.sell_price"/>
+     <el-dialog v-model="showAdd" title="新增商品" width="500px">
+    <el-form label-width="80px">
+    <el-form-item label="名称">
+      <el-input v-model="newForm.name"/>
+    </el-form-item>
+    <el-form-item label="库存">
+      <el-input v-model="newForm.stock"/>
+    </el-form-item>
+    <el-form-item label="成本价">
+      <el-input v-model="newForm.cost_price"/>
+    </el-form-item>
+    <el-form-item label="售价">
+      <el-input v-model="newForm.sell_price"/>
+    </el-form-item>
+    <el-form-item label="图片">
+      <input type="file" @change="handleFile">
+      
+      <!--图片预览-->
+      <div v-if="previewImage" style="margin-top:10px;">
+      <img :src="previewImage" width="120" style="border-radius:8px;"/>
+      </div>
+    </el-form-item>
+  </el-form>
+  <template #footer>
+    <el-button @click="showAdd=false">取 消</el-button>
+    <el-button type="primary" @click="addProduct">提交</el-button>
+  </template>
+</el-dialog>
 
-      <button @click="addProduct">提交</button>
-      <button @click="cancelAdd">取消</button>
-      <hr>
-    </div>
-    <table border="1" width="100%">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>名称</th>
-          <th>图片</th>
-          <th>库存</th>
-          <th>成本价</th>
-          <th>售价</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in goodsList" :key="item.id">
-          <td>{{ item.id }}</td>
-          <td>{{ item.name }}</td>
-          <td><img :src="item.image" width="60"></td>
-          <td>{{ item.stock }}</td>
-          <td>{{ item.cost_price }}</td>
-          <td>{{ item.sell_price }}</td>
-          <td>
-            <button @click="editProduct(item)">编辑</button>
-            <button @click="deleteProduct(item.id)">删除</button>
-          </td>
-        </tr>
-
-        <tr v-if="goodsList.length===0">
-          <td colspan="6">暂无数据</td>
-        </tr>
-      </tbody>
-    </table>
   </div>
+
+ 
 </template>
+
+
 
 <script>
 import axios from 'axios'
@@ -207,6 +228,9 @@ export default {
     },
     handleFile(e){
       this.file=e.target.files[0]
+    },
+    openAddDialog(){
+      this.showAdd=true
     }
 
   }
@@ -214,11 +238,27 @@ export default {
 </script>
 <style>
 .container{
-  width:800px;
-  margin:50px auto;
+  width:1200px;
+  margin:30px auto;
 }
 .search-box{
   margin-bottom:20px;
+}
+.toolbar{
+  margin-bottom:20px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.btn-group{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+}
+.action-buttons{
+  display:flex;
+  justify-content: center;
+  gap:10px;
 }
 input{
   padding:5px;
