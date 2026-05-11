@@ -11,6 +11,7 @@
       <el-button type="primary" @click="fetchProducts">搜索</el-button>
       <el-button @click="resetSearch">重置</el-button>
       <el-button type="success" @click="openAddDialog">新增</el-button>
+      <el-button type="warning" @click="exportCSV">导出</el-button>
       <el-button type="danger" @click="logout">退出登录</el-button>
     </div>
     </div>
@@ -135,6 +136,7 @@ export default {
         cost_price:'',
         sell_price:''
       }
+      
       
     }
   },
@@ -269,7 +271,12 @@ export default {
       if(this.editFile){
         this.editPreviewImage=URL.createObjectURL(this.editFile)
       }
-    }
+    },
+    exportCSV(){
+
+       window.open('http://localhost:5000/api/export/products')
+
+      }
 
   }
 }

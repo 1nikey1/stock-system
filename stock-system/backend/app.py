@@ -1,12 +1,13 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify,send_file
 from flask_cors import CORS
-import pymysql
+from werkzeug.utils import secure_filename
+from flask import send_from_directory
 from flask import request
 import os
 import uuid
 import datetime
-from werkzeug.utils import secure_filename
-from flask import send_from_directory
+import pymysql
+import csv
 
 app=Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # 解决中文乱码问题
@@ -184,6 +185,53 @@ def generate_filename(productr_name,original_filename):
     safe_name=secure_filename(productr_name)
     unique_id=uuid.uuid4().hex[:6]
     return f"{safe_name}_{unique_id}.{ext}"
+
+@app.route('/api/export/products')
+def export_products():
+    conn =get_db()
+    cursor=conn.cursor(pymysql.cursors.DictCursor)
+    cursor.execute('SELECT * FROM goods')
+    data=cursor.fetchall()
+    cursor.close()
+    conn.close()
+    #创建exports文件夹
+    export_dir=os.path.join(BASE_DIR,'exports')
+    os.makedirs(export_dir,exist_ok=True)
+    
+    #文件名
+    filename=f"products_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    filepath=os.path.join(export_dir,filename)
+    
+    #写入csv
+    with open(
+        filepath,
+        mode='w',
+        newline='',
+        encoding='utf-8-sig'
+    ) as f:
+        writer=csv.writer(f)
+        #表头
+        writer.writerow([
+            'ID',
+            '名称',
+            '库存',
+            '成本价',
+            '售价'            
+        ])
+        #数据
+        for item in data:
+            writer.writerow([
+                item['id'],
+                item['name'],
+                item['stock'],
+                item['cost_price'],
+                item['sell_price']
+            ])
+    #返回下载
+    return send_file(
+        filepath,
+        as_attachment=True
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
