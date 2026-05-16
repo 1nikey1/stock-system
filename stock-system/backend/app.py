@@ -186,81 +186,93 @@ def generate_filename(productr_name,original_filename):
     unique_id=uuid.uuid4().hex[:6]
     return f"{safe_name}_{unique_id}.{ext}"
 
+
 @app.route('/api/stock/in',methods=['POST'])
 def stock_in():
-    data =request.json
-    goods_id=data.get('goods_id')
-    quantity=int(data.get('quantity'))
-    remarks=data.get('remarks','')
+    
     conn=get_db()
     cursor=conn.cursor(pymysql.cursors.DictCursor)
     
-    #查询商品
-    cursor.execute(
-        'SELECT * FROM goods WHERE id=%s',
-        (goods_id)
-    )
-    goods=cursor.fetchone()
-    if not goods:
-        cursor.close()
-        conn.close()
+    try:
+        data =request.json
+        goods_id=data.get('goods_id')
+        quantity=int(data.get('quantity'))
+        remark=data.get('remark','')
+        
+        #查询商品
+        cursor.execute(
+            'SELECT * FROM goods WHERE id=%s',
+            (goods_id,)
+        )
+        goods=cursor.fetchone()
+        if not goods:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success':False,
+                'message':'商品不存在'
+            })
+            
+        #原库存
+        before_stock=goods['stock']
+        #新库存
+        after_stock=before_stock+quantity
+        #更新库存
+        cursor.execute(
+            '''
+            UPDATE goods
+            SET stock=%s
+            WHERE id=%s
+            ''',
+            (
+                after_stock,
+                goods_id
+            )
+        )
+        #写入库存流水
+        cursor.execute(
+            '''
+            INSERT INTO stock_records(
+                goods_id,
+                goods_name,
+                type,
+                quantity,
+                before_stock,
+                after_stock,
+                cost_price,
+                sell_price,
+                remark
+            )
+            VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ''',
+            (
+                goods_id,
+                goods['name'],
+                'in',
+                quantity,
+                before_stock,
+                after_stock,
+                goods['cost_price'],
+                goods['sell_price'],
+                remark
+            )
+            
+        )
+        conn.commit()
+        return jsonify({
+            'success':True,
+            'message':'入库成功'
+        })
+    except Exception as e:
+        conn.rollback()
+        
         return jsonify({
             'success':False,
-            'message':'商品不存在'
+            'message':str(e)
         })
-        
-    #原库存
-    before_stock=goods['stock']
-    #新库存
-    after_stock=before_stock+quantity
-    #更新库存
-    cursor.execute(
-        '''
-        UPDATE goods
-        SET stock=%s
-        WHERE id=%s
-        ''',
-        (
-            after_stock,
-            goods_id
-        )
-    )
-    #写入库存流水
-    cursor.execute(
-        '''
-        INSERT INTO stock_records(
-            goods_id,
-            goods_name,
-            type,
-            quantity,
-            before_stock,
-            after_stock,
-            cost_price,
-            sell_price,
-            remarks
-        )
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        ''',
-        (
-            goods_id,
-            goods['name'],
-            'in',
-            quantity,
-            before_stock,
-            after_stock,
-            goods['cost_price'],
-            goods['sell_price'],
-            remarks
-        )
-        
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({
-        'success':True,
-        'message':'入库成功'
-    })
+    finally:
+        cursor.close()
+        conn.close()
     
     
 @app.route('/api/stock/out', methods=['POST'])
@@ -410,6 +422,57 @@ def export_products():
         filepath,
         as_attachment=True
     )
+    
+@app.route('/api/stock/records')
+def get_stock_records():
+
+    keyword = request.args.get('keyword', '')
+
+    conn = get_db()
+
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+    # 查询商品
+    cursor.execute(
+        '''
+        SELECT * FROM goods
+        WHERE name LIKE %s
+        ORDER BY id DESC
+        ''',
+        (f"%{keyword}%",)
+    )
+
+    goods_list = cursor.fetchall()
+
+    result = []
+
+    # 查询每个商品的库存流水
+    for goods in goods_list:
+
+        cursor.execute(
+            '''
+            SELECT * FROM stock_records
+            WHERE goods_id=%s
+            ORDER BY create_time DESC
+            ''',
+            (goods['id'],)
+        )
+
+        records = cursor.fetchall()
+
+        result.append({
+            'goods': goods,
+            'records': records
+        })
+
+    # 注意：
+    # 这里必须在 for 循环结束后
+
+    cursor.close()
+
+    conn.close()
+
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)

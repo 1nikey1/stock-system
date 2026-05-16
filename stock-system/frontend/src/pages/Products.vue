@@ -12,6 +12,7 @@
       <el-button @click="resetSearch">重置</el-button>
       <el-button type="success" @click="openAddDialog">新增</el-button>
       <el-button type="warning" @click="exportCSV">导出</el-button>
+      <el-button type="info" @click="$router.push('/stock-records')">库存记录</el-button>
       <el-button type="danger" @click="logout">退出登录</el-button>
     </div>
     </div>
@@ -32,12 +33,13 @@
       <el-table-column prop="stock" label="库存"/>
       <el-table-column prop="cost_price" label="成本价"/>
       <el-table-column prop="sell_price" label="售价"/>
-      <el-table-column label="操作" width="220" align="center">
+      <el-table-column label="操作" width="260" align="center">
         <template #default="scope">
           <div class="action-buttons">
           <el-button type="primary" size="small" @click="editProduct(scope.row)">编辑</el-button>
           <el-button type="danger" size="small" @click="deleteProduct(scope.row.id)">删除</el-button>
-        
+          <el-button type="success" size="small" @clikc="openStockIn(scope.row)">入库</el-button>
+          <el-button type="warning" size="small" @click="openStockOut(scope.row)">出库</el-button>
         </div></template>
       </el-table-column>
     </el-table>
@@ -101,6 +103,43 @@
 
 </el-dialog>
 
+<!--入库弹窗-->
+<el-dialog v-model="showStockIn" title="商品入库" width="500px">
+  <el-form label-width="80px">
+    <el-form-item label="商品">
+      <el-input v-model="stockForm.goods_name" disabled/>
+    </el-form-item>
+    <el-form-item label="数量">
+      <el-input v-model="stockForm.quantity"/>
+    </el-form-item>
+    <el-form-item label="备注">
+      <el-input v-model="stockForm.remark"/>
+    </el-form-item>
+  </el-form>
+  <template #footer>
+    <el-button @click="showStockIn=false">取消</el-button>
+    <el-button type="primary" @click="submitStockIn">提交</el-button>
+  </template>
+</el-dialog>
+<!--出库弹窗-->
+<el-dialog v-model="showStockOut" title="商品出库" width="500px">
+  <el-form label-width="80px">
+    <el-form-item label="商品">
+      <el-input v-model="stockForm.goods_name" disabled/>
+    </el-form-item>
+    <el-form-item label="数量">
+      <el-input v-model="stockForm.quantity"/>
+    </el-form-item>
+    <el-form-item label="备注">
+      <el-input v-model="stockForm.remark"/>
+    </el-form-item>
+  </el-form>
+  <template #footer>
+    <el-button @click="showStockOut=false">取消</el-button>
+    <el-button type="primary" @click="submitStockOut">提交</el-button>
+  </template>
+</el-dialog>
+
   </div>
 
  
@@ -135,6 +174,14 @@ export default {
         stock:'',
         cost_price:'',
         sell_price:''
+      },
+      showStockIn:false,
+      showStockOut:false,
+      stockForm:{
+        goods_id:null,
+        goods_name:'',
+        quantity:'',
+        remark:''
       }
       
       
@@ -276,7 +323,61 @@ export default {
 
        window.open('http://localhost:5000/api/export/products')
 
+    },
+    openStockIn(goods){
+      this.stockForm={
+        goods_id:goods.id,
+        goods_name:goods.name,
+        quantity:'',
+        remark:''
       }
+      this.showStockIn=true
+    },
+    openStockOut(goods){
+      this.stockForm={
+        goods_id:goods.id,
+        goods_name:goods.name,
+        quantity:'',
+        remark:''
+      }
+      this.showStockOut=true
+    },
+    submitStockIn(){
+      axios.post('http://localhost:5000/api/stock/in',
+        {
+          goods_id:this.stockForm.goods_id,
+          quantity:this.stockForm.quantity,
+          remark:this.stockForm.remark
+        }
+      ).then(res=>{
+        alert(res.data.message)
+        this.showStockIn=false
+        this.fetchProducts()
+      }).catch(err=>{
+        console.error(err)
+        alert('入库失败')
+      })
+    },
+    submitStockOut(){
+      axios.post('http://localhost:5000/api/stock/out',
+        {
+          goods_id:this.stockForm.goods_id,
+          quantity:this.stockForm.quantity,
+          remark:this.stockForm.remark
+        }
+      ).then(res=>{
+        if(!res.data.success){
+          alert(res.data.message)
+          return
+        }
+        alert(res.data.message)
+        this.showStockOut=false
+        this.fetchProducts()
+      }).catch(err=>{
+        console.error(err)
+        alert('出库失败')
+      })
+    }
 
   }
 }
@@ -303,7 +404,11 @@ export default {
 .action-buttons{
   display:flex;
   justify-content: center;
-  gap:10px;
+  gap:8px;
+}
+.action-buttons .el-button{
+  width:80px;
+  margin:0;
 }
 input{
   padding:5px;
