@@ -1,17 +1,20 @@
-from flask import Flask, jsonify,send_file
+from flask import Flask, jsonify,send_file,request
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from flask import send_from_directory
 from flask import request
+from functools import wraps
 import os
 import uuid
 import datetime
 import pymysql
 import csv
+import jwt
 
 app=Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # 解决中文乱码问题
 CORS(app)
+SECRET_KEY='stock_system_2026'
 
 def get_db():
     return pymysql.connect(
@@ -22,6 +25,31 @@ def get_db():
         charset='utf8mb4'
     )
     
+def login_required(f):
+    @wraps(f)
+    def decorated(*args,**kwargs):
+        print(request.headers)
+        token=request.headers.get('Authorization')
+        if not token:
+            return jsonify({
+                'success':False,
+                'message':'缺少Token'
+            }),401
+        try:
+            jwt.decode(
+                token,
+                SECRET_KEY,
+                algorithms=['HS256']
+            )
+        except:
+            return jsonify({
+                'success':False,
+                'message':'登录已失效'
+            }),401
+        return f(*args,**kwargs)
+    return decorated
+    
+
 @app.route('/api/login',methods=['POST'])
 def login():
     data=request.json
@@ -37,16 +65,29 @@ def login():
     conn.close()
     
     if user:
+        token=jwt.encode(
+            {
+                'id':user['id'],
+                'username':user['username'],
+                'exp':datetime.datetime.utcnow()+datetime.timedelta(hours=12)
+            },
+            SECRET_KEY,
+            algorithm='HS256'
+        )
+        
         return jsonify({
             'success':True,
-            'message':'登录成功'})
-    else:
-        return jsonify({
+            'message':'登录成功',
+            'token':token
+        })
+    return jsonify({
             'success':False,
             'message':'用户名或密码错误'
         })
+        
     
 @app.route('/api/products')
+@login_required
 def get_goods():
     keyword=request.args.get('keyword','')
     
@@ -63,6 +104,7 @@ def get_goods():
     return jsonify(data)
 
 @app.route('/api/products/<int:good_id>',methods=['DELETE'])
+
 def delete_good(good_id):
     conn=get_db()
     cursor=conn.cursor()
@@ -76,6 +118,7 @@ def delete_good(good_id):
     return jsonify({'message':'删除成功'})
 
 @app.route('/api/products/<int:good_id>',methods=['PUT'])
+
 def update_goods(good_id):
     #获得表单数据
     name=request.form.get('name')
@@ -122,6 +165,7 @@ def update_goods(good_id):
     return jsonify({'message':'更新成功'})
 
 @app.route('/api/products',methods=['POST'])
+@login_required
 def add_product():
     name=request.form.get('name')
     stock=request.form.get('stock')
@@ -158,6 +202,7 @@ def add_product():
     return jsonify({'message':'新增成功'})
 
 @app.route('/uploads/<path:filename>')
+
 def get_file(filename):
     return send_from_directory('uploads',filename)
 
@@ -188,6 +233,7 @@ def generate_filename(productr_name,original_filename):
 
 
 @app.route('/api/stock/in',methods=['POST'])
+
 def stock_in():
     
     conn=get_db()
@@ -276,6 +322,7 @@ def stock_in():
     
     
 @app.route('/api/stock/out', methods=['POST'])
+
 def stock_out():
 
     data = request.json
@@ -377,6 +424,7 @@ def stock_out():
     
 
 @app.route('/api/export/products')
+@login_required
 def export_products():
     conn =get_db()
     cursor=conn.cursor(pymysql.cursors.DictCursor)
@@ -424,6 +472,7 @@ def export_products():
     )
     
 @app.route('/api/stock/records')
+@login_required
 def get_stock_records():
 
     keyword = request.args.get('keyword', '')

@@ -23,8 +23,8 @@ const router=createRouter({
 })
 
 router.beforeEach((to,from,next)=>{
-    const user=localStorage.getItem('user')
-    if(to.path!=='/' && !user) {
+    const token=localStorage.getItem('token')
+    if(to.path!=='/' && !token) {
         next('/')
     } else {
         next()

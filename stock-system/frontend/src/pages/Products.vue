@@ -38,7 +38,7 @@
           <div class="action-buttons">
           <el-button type="primary" size="small" @click="editProduct(scope.row)">编辑</el-button>
           <el-button type="danger" size="small" @click="deleteProduct(scope.row.id)">删除</el-button>
-          <el-button type="success" size="small" @clikc="openStockIn(scope.row)">入库</el-button>
+          <el-button type="success" size="small" @click="openStockIn(scope.row)">入库</el-button>
           <el-button type="warning" size="small" @click="openStockOut(scope.row)">出库</el-button>
         </div></template>
       </el-table-column>
@@ -196,6 +196,7 @@ export default {
 
     // 获取商品
     fetchProducts() {
+      console.log('token:',localStorage.getItem('token'))
       axios.get('http://localhost:5000/api/products', {
         params: { keyword: this.keyword }
       }).then(res => {
@@ -265,6 +266,7 @@ export default {
 
     logout() {
       localStorage.removeItem('user')
+      localStorage.removeItem('token')
       this.$router.push('/')
     },
 
@@ -377,9 +379,10 @@ export default {
         console.error(err)
         alert('出库失败')
       })
-    }
+    
 
   }
+}
 }
 </script>
 <style>
